@@ -2,9 +2,6 @@
  * Copyright (c) 2015      Intel, Inc.  All rights reserved.
  * Copyright (c) 2017      Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2018      Hewlett Packard Enterprise Development LP. All
- *                         rights reserved.
- *
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -29,7 +26,11 @@ static struct fid_ep *mca_common_ofi_ep = NULL;
 
 int mca_common_ofi_register_mca_variables(void)
 {
-    return OPAL_SUCCESS;
+    if (fi_version() >= FI_VERSION(1,0)) {
+        return OPAL_SUCCESS;
+    } else {
+        return OPAL_ERROR;
+    }
 }
 
 int mca_common_ofi_get_ofi_info(struct fi_info **prov,

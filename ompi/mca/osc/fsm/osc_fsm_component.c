@@ -182,6 +182,8 @@ component_query(struct ompi_win_t *win, void **base, size_t size, int disp_unit,
                 struct ompi_communicator_t *comm, struct opal_info_t *info,
                 int flavor)
 {
+    char *description_str;
+
     OSC_FSM_VERBOSE(MCA_BASE_VERBOSE_TRACE, "osc/fsm: component_query called\n");
     int ret;
     if (OMPI_SUCCESS != (ret = check_win_ok(comm, flavor))) {
@@ -191,7 +193,17 @@ component_query(struct ompi_win_t *win, void **base, size_t size, int disp_unit,
     /* FIXME: Look in opal_info_t if there are any flags that are not supported in this window */
 
     OSC_FSM_VERBOSE(MCA_BASE_VERBOSE_INFO, "Query fits criteria.\n");
-    return 1000; //FIXME: Maybe don't return an arbitrary value that ensures this component is selected
+    //return 1000;  //FIXME: Maybe don't return an arbitrary value that ensures this component is selected
+
+    mca_osc_fsm_component.priority = 0;
+    opal_asprintf(&description_str, "Priority of the osc/fsm component (default: %d)",
+             mca_osc_fsm_component.priority);
+    (void) mca_base_component_var_register (&mca_osc_fsm_component.super.osc_version, "priority", description_str,
+                                            MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                            MCA_BASE_VAR_SCOPE_GROUP, &mca_osc_fsm_component.priority);
+    free(description_str);
+
+    return mca_osc_fsm_component.priority;
 }
 
 
@@ -200,6 +212,7 @@ component_select(struct ompi_win_t *win, void **base, size_t size, int disp_unit
                  struct ompi_communicator_t *comm, struct opal_info_t *info,
                  int flavor, int *model)
 {
+    OSC_FSM_VERBOSE_F(1, "Entered component_select\n");
     ompi_osc_fsm_module_t *module = NULL;
     int comm_size = ompi_comm_size (comm);
     int i;
@@ -358,13 +371,15 @@ component_select(struct ompi_win_t *win, void **base, size_t size, int disp_unit
 
         // if this flag is set then we use the remote vaddr to address memory on the other side
         if(prov->domain_attr->mr_mode & FI_MR_VIRT_ADDR) {
+            OSC_FSM_VERBOSE(MCA_BASE_VERBOSE_DEBUG,"module->remote_vaddr_bases set FI_MR_VIRT_ADDR is true\n");
             ret = module->comm->c_coll->coll_allgather(&module->my_segment_base, 1, MPI_AINT,
                                                       module->remote_vaddr_bases, 1, MPI_AINT,
                                                       module->comm,
                                                       module->comm->c_coll->coll_allgather_module);
         } else {
-            void * null = 0;
-            ret = module->comm->c_coll->coll_allgather(&null, 1, MPI_AINT,
+            /* void * null = 0; */
+            OSC_FSM_VERBOSE(MCA_BASE_VERBOSE_DEBUG,"Set module->remote_vaddr_bases although FI_MR_VIRT_ADDR is false\n");
+            ret = module->comm->c_coll->coll_allgather(&module->my_segment_base, 1, MPI_AINT,
                                                       module->remote_vaddr_bases, 1, MPI_AINT,
                                                       module->comm,
                                                       module->comm->c_coll->coll_allgather_module);
